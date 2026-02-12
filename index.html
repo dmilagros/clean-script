@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Procesador de Texto - Reemplazo MUTEAR/DECIR</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>🔄 Procesador de Texto</h1>
+            <p class="subtitle">Reemplaza marcadores <code>&lt;&lt;&lt;MUTEAR: X → DECIR: Y&gt;&gt;&gt;</code> por solo
+                <code>Y</code>
+            </p>
+            <p class="hint">✨ Preserva formato | 🎬 Elimina bloques de sugerencias visuales</p>
+        </header>
+
+        <main>
+            <div class="button-section">
+                <button id="process-btn" class="btn-process">
+                    <span class="btn-icon">⚡</span>
+                    Procesar
+                </button>
+                <button id="clear-btn" class="btn-clear">
+                    <span class="btn-icon">🗑️</span>
+                    Limpiar
+                </button>
+            </div>
+
+            <div class="text-areas">
+                <div class="input-section">
+                    <label>
+                        <span class="label-icon">📝</span>
+                        Texto de entrada (pega aquí con formato)
+                    </label>
+                    <div id="input-text" class="editable-area" contenteditable="true"
+                        data-placeholder="Pega aquí tu texto con los marcadores <<<MUTEAR: X → DECIR: Y>>> y/o bloques 🎬 [SUGERENCIAS VISUALES]...">
+                    </div>
+                </div>
+
+                <div class="output-section">
+                    <label>
+                        <span class="label-icon">✅</span>
+                        Texto procesado
+                    </label>
+                    <div id="output-text" class="editable-area output" contenteditable="false"
+                        data-placeholder="El resultado aparecerá aquí..."></div>
+                    <button id="copy-btn" class="btn-copy" disabled>
+                        <span class="btn-icon">📋</span>
+                        Copiar resultado (con formato)
+                    </button>
+                </div>
+            </div>
+
+            <div class="stats" id="stats" style="display: none;">
+                <div class="stat-item">
+                    <span class="stat-number" id="replacements-count">0</span>
+                    <span class="stat-label">reemplazos MUTEAR/DECIR</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number" id="blocks-count">0</span>
+                    <span class="stat-label">bloques visuales eliminados</span>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <p>Detecta y reemplaza marcadores del formato
+                <code>&lt;&lt;&lt;MUTEAR: palabra → DECIR: reemplazo&gt;&gt;&gt;</code>
+            </p>
+        </footer>
+    </div>
+
+    <div class="toast" id="toast">
+        <span id="toast-message"></span>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
