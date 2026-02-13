@@ -167,6 +167,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const patternPlain = /<<<MUTEAR:\s*[^→]+→\s*DECIR:\s*([^>]+)>>>/g;
 
         let count = 0;
+        let resourcesRemoved = 0;
+        let sectionsRemoved = 0;
+        let searchMarkersRemoved = 0;
 
         // Primero intentar con entidades HTML escapadas
         let processedHTML = html.replace(pattern, (match, decirValue) => {
@@ -180,6 +183,28 @@ document.addEventListener('DOMContentLoaded', () => {
             return decirValue.trim();
         });
 
+        // Eliminar marcadores de recursos: 📰/📹/📸 [RECURSO - ...]
+        // Captura desde el emoji hasta el cierre del corchete ]
+        const resourcePattern = /[\u{1F4F0}\u{1F4F9}\u{1F4F8}\u{1F3AC}\u{1F4FA}\u{1F4F7}\u{1F3A5}]\s*\[RECURSO\s*-\s*[^\]]*\]/gu;
+        processedHTML = processedHTML.replace(resourcePattern, () => {
+            resourcesRemoved++;
+            return '';
+        });
+
+        // Eliminar marcadores de sección: SECCIÓN: TEXTO
+        const sectionPattern = /SECCIÓN:\s*[^\n<]*/g;
+        processedHTML = processedHTML.replace(sectionPattern, () => {
+            sectionsRemoved++;
+            return '';
+        });
+
+        // Eliminar marcadores de búsqueda/referencia: BUSCAR EN: [...], TÉRMINOS DE BÚSQUEDA: [...], MEDIO: [...], FECHA: [...]
+        const searchPattern = /(?:BUSCAR EN|TÉRMINOS DE BÚSQUEDA|MEDIO|FECHA):\s*\[[^\]]*\]/g;
+        processedHTML = processedHTML.replace(searchPattern, () => {
+            searchMarkersRemoved++;
+            return '';
+        });
+
         // Eliminar bloques de sugerencias visuales
         const visualResult = removeVisualSuggestions(processedHTML);
         processedHTML = visualResult.html;
@@ -187,7 +212,10 @@ document.addEventListener('DOMContentLoaded', () => {
         return {
             html: processedHTML,
             replacements: count,
-            blocksRemoved: visualResult.blocksRemoved
+            blocksRemoved: visualResult.blocksRemoved,
+            resourcesRemoved: resourcesRemoved,
+            sectionsRemoved: sectionsRemoved,
+            searchMarkersRemoved: searchMarkersRemoved
         };
     }
 
@@ -240,12 +268,15 @@ document.addEventListener('DOMContentLoaded', () => {
             outputText.classList.remove('processing');
         }, 500);
 
-        const totalChanges = result.replacements + result.blocksRemoved;
+        const totalChanges = result.replacements + result.blocksRemoved + result.resourcesRemoved + result.sectionsRemoved + result.searchMarkersRemoved;
         if (totalChanges > 0) {
             let msg = '✅ ';
             const parts = [];
             if (result.replacements > 0) parts.push(`${result.replacements} reemplazo(s)`);
             if (result.blocksRemoved > 0) parts.push(`${result.blocksRemoved} bloque(s) visual(es) eliminado(s)`);
+            if (result.resourcesRemoved > 0) parts.push(`${result.resourcesRemoved} recurso(s) eliminado(s)`);
+            if (result.sectionsRemoved > 0) parts.push(`${result.sectionsRemoved} sección(es) eliminada(s)`);
+            if (result.searchMarkersRemoved > 0) parts.push(`${result.searchMarkersRemoved} marcador(es) de búsqueda eliminado(s)`);
             msg += parts.join(' | ');
             showToast(msg);
         } else {
