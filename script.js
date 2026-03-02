@@ -31,6 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     function removeVisualSuggestions(html) {
         let count = 0;
+        const detectionLog = [];
         const tempDiv = document.createElement('div');
         tempDiv.innerHTML = html;
 
@@ -121,12 +122,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 count++;
                 nodesToRemove.push(leaf);
                 afterTrigger = true;
+                detectionLog.push({ type: 'visual-block', label: '🎬 Bloque de sugerencias visuales', detail: text.slice(0, 80) });
                 continue;
             }
 
             // Marcadores de inserción: 📰/📹/📸 [INSERTAR ...]
-            if (/[\u{1F4F0}\u{1F4F9}\u{1F4F8}\u{1F3AC}\u{1F4FA}\u{1F4F7}\u{1F3A5}]\s*\[INSERTAR\b/u.test(text)) {
+            if (/[\u{1F4F0}\u{1F4F9}\u{1F4F8}\u{1F3AC}\u{1F4FA}\u{1F4F7}\u{1F3A5}\u{1F3A4}\u{1F399}]\s*\[INSERTAR\b/u.test(text)) {
                 nodesToRemove.push(leaf);
+                detectionLog.push({ type: 'insertar', label: '📌 Marcador [INSERTAR]', detail: text.slice(0, 80) });
+                continue;
+            }
+
+            // Referencia/fuente general: emoji [TIPO: contenido] metadatos...
+            // Detecta: 📰 [ARTÍCULO: ...], 📹 [DOCUMENTAL: ...], 🎤 [DECLARACIÓN: ...], 📰 [LIBRO: ...], etc.
+            if (/[\u{1F4F0}\u{1F4F9}\u{1F4F8}\u{1F3AC}\u{1F4FA}\u{1F4F7}\u{1F3A5}\u{1F3A4}\u{1F399}]\s*\[[^\]]*:/u.test(text)) {
+                nodesToRemove.push(leaf);
+                detectionLog.push({ type: 'referencia', label: '📎 Referencia/Fuente', detail: text.slice(0, 80) });
                 continue;
             }
 
@@ -134,6 +145,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const isLi = leaf.nodeType === Node.ELEMENT_NODE && leaf.tagName === 'LI';
                 if (isLi || isVisualItem(text)) {
                     nodesToRemove.push(leaf);
+                    detectionLog.push({ type: 'visual-item', label: '  ↳ Item visual eliminado', detail: text.slice(0, 80) });
                     continue;
                 }
             }
@@ -155,7 +167,7 @@ document.addEventListener('DOMContentLoaded', () => {
         processedHTML = processedHTML.replace(/<(div|p|li)(\s[^>]*)?>(\s*(<br\s*\/?>)?\s*)<\/\1>/gi, '');
         processedHTML = processedHTML.replace(/(<br\s*\/?>){3,}/gi, '<br><br>');
 
-        return { html: processedHTML, blocksRemoved: count };
+        return { html: processedHTML, blocksRemoved: count, detectionLog };
     }
 
 
@@ -163,45 +175,86 @@ document.addEventListener('DOMContentLoaded', () => {
         // Regex para capturar el patrón <<<MUTEAR: X → DECIR: Y>>>
         // Funciona tanto en texto plano como dentro de HTML
         // Maneja casos donde el marcador puede estar dividido por tags HTML
-        const pattern = /&lt;&lt;&lt;MUTEAR:\s*[^→]+→\s*DECIR:\s*([^&]+)&gt;&gt;&gt;/g;
-        const patternPlain = /<<<MUTEAR:\s*[^→]+→\s*DECIR:\s*([^>]+)>>>/g;
+        const pattern = /&lt;&lt;&lt;MUTEAR:\s*([^→]+)→\s*DECIR:\s*([^&]+)&gt;&gt;&gt;/g;
+        const patternPlain = /<<<MUTEAR:\s*([^→]+)→\s*DECIR:\s*([^>]+)>>>/g;
 
         let count = 0;
         let resourcesRemoved = 0;
         let sectionsRemoved = 0;
         let searchMarkersRemoved = 0;
+        const detectionLog = [];
 
         // Primero intentar con entidades HTML escapadas
-        let processedHTML = html.replace(pattern, (match, decirValue) => {
+        let processedHTML = html.replace(pattern, (match, mutearValue, decirValue) => {
             count++;
+            detectionLog.push({
+                type: 'mutear',
+                label: '🔄 MUTEAR → DECIR',
+                detail: `"${mutearValue.trim()}" → "${decirValue.trim()}"`
+            });
             return decirValue.trim();
         });
 
         // Luego con caracteres normales (por si el texto se pegó de cierta manera)
-        processedHTML = processedHTML.replace(patternPlain, (match, decirValue) => {
+        processedHTML = processedHTML.replace(patternPlain, (match, mutearValue, decirValue) => {
             count++;
+            detectionLog.push({
+                type: 'mutear',
+                label: '🔄 MUTEAR → DECIR',
+                detail: `"${mutearValue.trim()}" → "${decirValue.trim()}"`
+            });
             return decirValue.trim();
         });
 
         // Eliminar marcadores de recursos: 📰/📹/📸 [RECURSO - ...]
         // Captura desde el emoji hasta el cierre del corchete ]
-        const resourcePattern = /[\u{1F4F0}\u{1F4F9}\u{1F4F8}\u{1F3AC}\u{1F4FA}\u{1F4F7}\u{1F3A5}]\s*\[RECURSO\s*-\s*[^\]]*\]/gu;
-        processedHTML = processedHTML.replace(resourcePattern, () => {
+        const resourcePattern = /[\u{1F4F0}\u{1F4F9}\u{1F4F8}\u{1F3AC}\u{1F4FA}\u{1F4F7}\u{1F3A5}\u{1F3A4}\u{1F399}]\s*\[RECURSO\s*-\s*([^\]]*)\]/gu;
+        processedHTML = processedHTML.replace(resourcePattern, (match, content) => {
             resourcesRemoved++;
+            detectionLog.push({
+                type: 'recurso',
+                label: '📦 Marcador [RECURSO]',
+                detail: content.trim().slice(0, 80)
+            });
+            return '';
+        });
+
+        // Eliminar referencias generales: emoji [TIPO: contenido] metadatos en la misma línea
+        // Cubre: [ARTÍCULO: ...], [LIBRO: ...], [DOCUMENTAL: ...], [DECLARACIÓN: ...], [INSERTAR ...], etc.
+        let refsRemoved = 0;
+        const refPattern = /[\u{1F4F0}\u{1F4F9}\u{1F4F8}\u{1F3AC}\u{1F4FA}\u{1F4F7}\u{1F3A5}\u{1F3A4}\u{1F399}]\s*\[[^\]]*\][^<\n]*/gu;
+        processedHTML = processedHTML.replace(refPattern, (match) => {
+            refsRemoved++;
+            detectionLog.push({
+                type: 'referencia',
+                label: '📎 Referencia/Fuente',
+                detail: match.trim().slice(0, 80)
+            });
             return '';
         });
 
         // Eliminar marcadores de sección: SECCIÓN: TEXTO
-        const sectionPattern = /SECCIÓN:\s*[^\n<]*/g;
-        processedHTML = processedHTML.replace(sectionPattern, () => {
+        const sectionPattern = /SECCIÓN:\s*([^\n<]*)/g;
+        processedHTML = processedHTML.replace(sectionPattern, (match, content) => {
             sectionsRemoved++;
+            detectionLog.push({
+                type: 'seccion',
+                label: '📂 Marcador SECCIÓN',
+                detail: content.trim().slice(0, 80)
+            });
             return '';
         });
 
-        // Eliminar marcadores de búsqueda/referencia: BUSCAR EN: [...], TÉRMINOS DE BÚSQUEDA: [...], MEDIO: [...], FECHA: [...]
-        const searchPattern = /(?:BUSCAR EN|TÉRMINOS DE BÚSQUEDA|MEDIO|FECHA):\s*\[[^\]]*\]/g;
-        processedHTML = processedHTML.replace(searchPattern, () => {
+        // Eliminar metadatos sueltos: MEDIO, FECHA, AUTOR, PLATAFORMA, AÑO, FUENTE, BUSCAR EN, TÉRMINOS DE BÚSQUEDA
+        // Acepta valores entre corchetes, entre comillas, o texto libre hasta fin de línea/tag
+        const searchPattern = /(BUSCAR EN|TÉRMINOS DE BÚS?QUEDA|MEDIO|FECHA|AUTOR|PLATAFORMA|AÑO|FUENTE):\s*("(?:[^"\\]|\\.)*"|\[[^\]]*\]|[^<\n]+)/g;
+        processedHTML = processedHTML.replace(searchPattern, (match, keyword, content) => {
             searchMarkersRemoved++;
+            detectionLog.push({
+                type: 'busqueda',
+                label: `🔍 Marcador ${keyword}`,
+                detail: content.trim().slice(0, 80)
+            });
             return '';
         });
 
@@ -213,9 +266,10 @@ document.addEventListener('DOMContentLoaded', () => {
             html: processedHTML,
             replacements: count,
             blocksRemoved: visualResult.blocksRemoved,
-            resourcesRemoved: resourcesRemoved,
+            resourcesRemoved: resourcesRemoved + refsRemoved,
             sectionsRemoved: sectionsRemoved,
-            searchMarkersRemoved: searchMarkersRemoved
+            searchMarkersRemoved: searchMarkersRemoved,
+            detectionLog: [...detectionLog, ...visualResult.detectionLog]
         };
     }
 
@@ -268,6 +322,22 @@ document.addEventListener('DOMContentLoaded', () => {
             outputText.classList.remove('processing');
         }, 500);
 
+        // Mostrar log de detecciones
+        const logEl = document.getElementById('detection-log');
+        const logListEl = document.getElementById('detection-log-list');
+        if (logEl && logListEl) {
+            if (result.detectionLog.length > 0) {
+                logListEl.innerHTML = result.detectionLog.map(item => {
+                    const typeClass = `log-${item.type}`;
+                    const detail = item.detail ? `<span class="log-detail">${item.detail}</span>` : '';
+                    return `<li class="log-item ${typeClass}"><span class="log-label">${item.label}</span>${detail}</li>`;
+                }).join('');
+                logEl.style.display = 'block';
+            } else {
+                logEl.style.display = 'none';
+            }
+        }
+
         const totalChanges = result.replacements + result.blocksRemoved + result.resourcesRemoved + result.sectionsRemoved + result.searchMarkersRemoved;
         if (totalChanges > 0) {
             let msg = '✅ ';
@@ -293,6 +363,8 @@ document.addEventListener('DOMContentLoaded', () => {
         stats.style.display = 'none';
         copyBtn.disabled = true;
         replacementsCount.textContent = '0';
+        const logEl = document.getElementById('detection-log');
+        if (logEl) logEl.style.display = 'none';
         showToast('🗑️ Campos limpiados');
     }
 

@@ -391,3 +391,123 @@ footer code {
 .processing {
     animation: pulse 0.5s ease-in-out;
 }
+
+/* ── Detection Log ─────────────────────────────────────────── */
+#detection-log {
+    margin-top: 1.5rem;
+    padding: 1.25rem 1.5rem;
+    background: var(--glass-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    backdrop-filter: blur(10px);
+}
+
+.log-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    margin-bottom: 0.85rem;
+}
+
+.log-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.log-item {
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+    padding: 0.45rem 0.75rem;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    background: rgba(255, 255, 255, 0.03);
+    border-left: 3px solid transparent;
+    line-height: 1.4;
+    flex-wrap: wrap;
+}
+
+.log-label {
+    font-weight: 600;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.log-detail {
+    color: var(--text-muted);
+    font-family: 'Fira Code', 'Monaco', monospace;
+    font-size: 0.8rem;
+    word-break: break-all;
+}
+
+/* Colores por tipo */
+.log-mutear {
+    border-left-color: var(--accent-primary);
+}
+
+.log-mutear .log-label {
+    color: var(--accent-secondary);
+}
+
+.log-recurso {
+    border-left-color: #f59e0b;
+}
+
+.log-recurso .log-label {
+    color: #fbbf24;
+}
+
+.log-seccion {
+    border-left-color: #8b5cf6;
+}
+
+.log-seccion .log-label {
+    color: #a78bfa;
+}
+
+.log-busqueda {
+    border-left-color: #06b6d4;
+}
+
+.log-busqueda .log-label {
+    color: #22d3ee;
+}
+
+.log-visual-block {
+    border-left-color: var(--success);
+}
+
+.log-visual-block .log-label {
+    color: var(--success);
+}
+
+.log-insertar {
+    border-left-color: #ec4899;
+}
+
+.log-insertar .log-label {
+    color: #f472b6;
+}
+
+.log-visual-item {
+    border-left-color: rgba(16, 185, 129, 0.3);
+    padding-left: 1.5rem;
+}
+
+.log-visual-item .log-label {
+    color: var(--text-muted);
+    font-weight: 400;
+    font-style: italic;
+}
+
+.log-referencia {
+    border-left-color: #f97316;
+}
+
+.log-referencia .log-label {
+    color: #fb923c;
+}
